@@ -1,0 +1,39 @@
+eipclean
+
+Clean spurious elastic IP entries from cloud hypervisors.
+
+Output of some sample runs:
+
+Non-verbose, dry run mode, on a configuration that requires no changes:
+[root@linux bin]# ./eipclean -d  -c zoochannel1 -i 192.168.3.20
+192.168.3.20 owner: hyper-6
+Running in dry run mode.  No changes will be made to EIP config on any hypervisor.
+CORRECT CONFIG: EIP 192.168.3.20 has an owner and is configured on a single hyper.
+[root@linux bin]#
+
+No options, defaults to -h help message:
+[root@linux bin]# ./eipclean
+Usage: eipclean [options] -c zookeeper_channel -i eip ...
+    -c, --channel CHANNEL            (Required) zookeeper channel
+    -i, --ip EIP                     (Required) elastic IP address
+    -v, --verbose                    Output verbose information
+    -d, --dryrun                     Do a dry run (don't actually change anything)
+    -h, --help                       Show this message
+[root@linux bin]#
+
+Verbose, dry run mode, on a configuration that requires no changes:
+[root@linux bin]# ./eipclean -d -v -c zoochannel1 -i 192.168.3.20
+192.168.3.20 owner: hyper-6
+Running in dry run mode.  No changes will be made to EIP config on any hypervisor.
+hyper-1: 
+hyper-2: 
+hyper-3:
+hyper-4: 
+hyper-5: 
+hyper-6:     inet 192.168.3.20/32 scope global br0
+hyper-7: 
+hyper-8: 
+hyper-9:
+hyper-10: 
+CORRECT CONFIG: EIP 192.168.3.20 has an owner and is configured on a single hyper.
+[root@linux bin]#

@@ -1,0 +1,22 @@
+#!/usr/bin/ruby
+
+# eipclean is a utility to search through a list of hypervisors, given a specific elastic IP address, to ensure
+# that only one of those hypervisors are assigned that address.  
+#
+# eipclean will first identify the owner of the EIP address by querying zookeeper, and if more than one hypervisor 
+# are assigned the address, eipclean will attempt to remove the iptables and ip entries from the incorrect 
+# hypervisors, in order to restore proper EIP functionality to the address
+#
+# Matt Newton 07/24/2011 mnewton@us.ibm.com
+
+require '../lib/eipclean.rb'
+require '../lib/options.rb'
+
+# do the rest
+eip = EIPClean::EIP.new(ARGV)
+
+# uncomment the following line to help debug options parsing issues
+# eip.dump_options
+
+eip.checkip
+eip.zoo_connection.close
