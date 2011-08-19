@@ -1,6 +1,6 @@
-eipclean
+eipclean-gui
 
-Clean spurious elastic IP entries from cloud hypervisors.
+Clean spurious elastic IP entries from cloud hypervisors (this version leverages a simple Rails frontend UI).
 
 Output of some sample runs:
 
