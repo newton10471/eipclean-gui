@@ -1,4 +1,8 @@
 EipcleanGui::Application.routes.draw do
+  get "eip/get"
+
+  get "eip/displayresult"
+
   # The priority is based upon order of creation:
   # first created -> highest priority.
 
