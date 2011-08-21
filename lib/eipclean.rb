@@ -4,15 +4,16 @@ require 'zookeeper'
 module EIPClean
   class EIP
   
-    attr_reader :zoo_connection, :channel, :value, :verbose, :dryrun, :found_hypers_return_output # :hypers, :owner, :found_hypers
-    def initialize(argv)
-      @options = EIPClean::Options.new(argv)
+    attr_reader :zoo_connection, :found_hypers_return_output # :hypers, :owner, :found_hypers
+    attr_accessor :channel, :value, :verbose, :dryrun
+    def initialize(value, channel, verbose, dryrun)
+      # @options = EIPClean::Options.new(argv)
       @zoo_connection = Zookeeper.new("zookeeper-1:2181")
-      @value = @options.value
+      @value = value
       @hypers = ["hyper-1","hyper-2","hyper-3","hyper-4","hyper-5","hyper-6","hyper-7","hyper-8","hyper-9","hyper-10"]
-      @channel = @options.channel # "hsltv3pp-iaas"
-      @verbose = @options.verbose
-      @dryrun = @options.dryrun
+      @channel = channel # "hsltv3pp-iaas"
+      @verbose = verbose
+      @dryrun = dryrun
       @owner = self.getowner()
       @found_hypers,@found_hypers_return_output = self.find_hypers()
     end
