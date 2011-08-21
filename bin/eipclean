@@ -15,8 +15,10 @@ require '../lib/options.rb'
 # do the rest
 eip = EIPClean::EIP.new(ARGV)
 
+puts eip.found_hypers_return_output
+
 # uncomment the following line to help debug options parsing issues
 # eip.dump_options
 
-eip.checkip
+puts eip.checkip
 eip.zoo_connection.close

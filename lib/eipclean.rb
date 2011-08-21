@@ -4,7 +4,7 @@ require 'zookeeper'
 module EIPClean
   class EIP
   
-    attr_reader :zoo_connection, :channel, :value, :verbose, :dryrun # :hypers, :owner, :found_hypers
+    attr_reader :zoo_connection, :channel, :value, :verbose, :dryrun, :found_hypers_return_output # :hypers, :owner, :found_hypers
     def initialize(argv)
       @options = EIPClean::Options.new(argv)
       @zoo_connection = Zookeeper.new("zookeeper-1:2181")
@@ -14,13 +14,15 @@ module EIPClean
       @verbose = @options.verbose
       @dryrun = @options.dryrun
       @owner = self.getowner()
-      @found_hypers = self.find_hypers()
+      @found_hypers,@found_hypers_return_output = self.find_hypers()
     end
   
     def do_ssh_cmd(node, cmd)
       ssh_cmd = "ssh -o StrictHostKeyChecking=no #{node} \"#{cmd}\""
-      puts "running the following ssh command: #{ssh_cmd}" unless @verbose == false
-      return `#{ssh_cmd}`
+      return_output = ""
+      return_output << "running the following ssh command: #{ssh_cmd}\n" unless @verbose == false
+      return_output << `#{ssh_cmd}`
+      return return_output
     end  
 
     # Placeholder for future functionality: if not given a default hyper list, query a zookeeper server for it
@@ -40,7 +42,7 @@ module EIPClean
         return nil
       else
         owner = /.*\.(.*)\@.*/.match(getresult[:data]) 
-        puts "#{@value} owner: #{owner[1]}" 
+        # puts "#{@value} owner: #{owner[1]}" 
         return owner[1]
       end
     end
@@ -49,51 +51,55 @@ module EIPClean
     # TODO: right now we're just checking for bad 'ip addr' entries, we could also 
     #   check for bad 'iptables-save' entries that don't have corresponding 'ip addr' entries
     def find_hypers
-      puts "Running in dry run mode.  No changes will be made to EIP config on any hypervisor." unless @dryrun == false
+      return_output = ""
+      return_output << "Running in dry run mode.  No changes will be made to EIP config on any hypervisor.\n" unless @dryrun == false
       found_hypers = []
       @hypers.each do |hyper| 
-        print "#{hyper}: " unless @verbose == false
+        return_output << "#{hyper}: " unless @verbose == false
         ssh_cmd = "ssh -o StrictHostKeyChecking=no #{hyper} \"ip addr list br0 | grep #{@value}\""
         ssh_cmd_output = `#{ssh_cmd}`
         unless ssh_cmd_output.empty?  
           found_hypers << hyper 
         end
-        puts ssh_cmd_output unless @verbose == false
+        return_output << "#{ssh_cmd_output}\n" unless @verbose == false
       end
-      return found_hypers
+      return found_hypers,return_output
     end
 
     def checkip
+      return_output = ""
       case
       when @owner.nil? && @found_hypers.empty?
-        puts "EIP #{@value} has no owner and is configured on no hypers."
+        return_output << "EIP #{@value} has no owner and is configured on no hypers."
       when @owner.nil? == false && @found_hypers.empty?
-        puts "EIP #{@value} has an owner but is not configured on any hyper."
+        return_output << "EIP #{@value} has owner #{@owner} but is not configured on any hyper."
       when @owner.nil? == false && @found_hypers.count == 1
-        puts "CORRECT CONFIG: EIP #{@value} has an owner and is configured on a single hyper."
+        return_output << "CORRECT CONFIG: EIP #{@value} has owner #{@owner} and is configured on a single hyper."
       when @owner.nil? == false && @found_hypers.count > 1
-        puts "ERROR CONDITION: EIP #{@value} has an owner and is configured on the following hypers:"
-        puts "#{@found_hypers.join(" ")}"
-        self.cleanup
+        return_output << "ERROR CONDITION: EIP #{@value} has owner #{@owner} and is configured on the following hypers:"
+        return_output << "#{@found_hypers.join(" ")}"
+        return_output << self.cleanup
       else
-        puts "ERROR: Something unexpected happened."
+        return_output << "ERROR: Something unexpected happened."
       end
+      return return_output
     end
 
     def cleanup
+      return_output = ""
       bad_hypers = @found_hypers
       bad_hypers.delete_if { |hyper| hyper == @owner }
-      puts "Removing incorrect iptables entries from the following hypers: "
-      puts "#{bad_hypers.join(" ")}"
+      return_output << "Removing incorrect iptables entries from the following hypers: "
+      return_output << "#{bad_hypers.join(" ")}"
 
-      puts unless @verbose == false
+      return_output << "\n" unless @verbose == false
 
       bad_hypers.each do |hyper|
-        puts "cleaning up #{hyper} ..." unless @verbose == false
+        return_output << "cleaning up #{hyper} ..." unless @verbose == false
 
         # find the bad 'ip addr' entry
         ip_addr = do_ssh_cmd(hyper,"ip addr|grep #{@value}")
-        puts "output of \"ip addr\" command: #{ip_addr}" unless @verbose == false
+        return_output << "output of \"ip addr\" command: #{ip_addr}" unless @verbose == false
 
         # grab the ip/netmask
         addrplusmask = ip_addr.split()[1]
@@ -103,20 +109,21 @@ module EIPClean
 
         # clean the bad 'ip addr' entry
         ipaddr_cleanup_cmd = "ip addr del #{addrplusmask} dev #{interface}"
-        puts "\'ip addr\' cleanup command is: \"#{ipaddr_cleanup_cmd}\"" unless @verbose == false
+        return_output << "\'ip addr\' cleanup command is: \"#{ipaddr_cleanup_cmd}\"" unless @verbose == false
         do_ssh_cmd(hyper, ipaddr_cleanup_cmd) unless @dryrun == true
 
         # find the bad iptables entry
         iptables_rule = do_ssh_cmd(hyper,"iptables-save|grep #{@value}")
-        puts "iptables rule to be cleaned up: #{iptables_rule}" unless @verbose == false
+        return_output << "iptables rule to be cleaned up: #{iptables_rule}" unless @verbose == false
 
         # clean the bad iptables entry
         iptables_cleanup_cmd = "iptables -t nat -D #{iptables_rule[2..iptables_rule.length].chop}"
-        puts "iptables cleanup command is: \"#{iptables_cleanup_cmd}\"" unless @verbose == false
+        return_output << "iptables cleanup command is: \"#{iptables_cleanup_cmd}\"" unless @verbose == false
         do_ssh_cmd(hyper, iptables_cleanup_cmd) unless @dryrun == true
 
-        puts unless @verbose == false 
+        return_output << "\n" unless @verbose == false 
       end 
+      return return_output
     end
 
     # this def used only for debug
